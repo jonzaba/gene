@@ -5,7 +5,8 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../database/database_helper.dart';
 import '../models/persona.dart';
-import 'person_details_screen.dart';
+import '../widgets/main_layout.dart';
+import '../widgets/custom_menu_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -101,69 +102,32 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Arbol Genealogico'),
-            if (_dbPath != null)
-              Text(_dbPath!, style: Theme.of(context).textTheme.labelSmall),
-          ],
+  void _closeDatabase() {
+    // Ideally close DB connection in DatabaseHelper
+    setState(() {
+      _dbPath = null;
+      _currentPersona = null;
+    });
+    // Re-initialize DB helper if needed or just flag as closed
+    // DatabaseHelper.instance.close(); // Implement if exists
+  }
+
+  Future<void> _saveDatabase() async {
+    // Placeholder for saving/exporting functionality
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Función de guardar pendiente de implementación'),
         ),
-        actions: [
-          if (DatabaseHelper.instance.isDatabaseOpen)
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {
-                showSearch(
-                  context: context,
-                  delegate: PersonaSearchDelegate(onSelect: _loadPersona),
-                );
-              },
-            ),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text(
-                'Menú',
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.folder_open),
-              title: const Text('Abrir Base de Datos'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickDatabase();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.cloud_download),
-              title: const Text('Probar API'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _testApi();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.exit_to_app),
-              title: const Text('Salir'),
-              onTap: () {
-                // Exit app
-              },
-            ),
-          ],
-        ),
-      ),
-      body: _buildBody(),
+      );
+    }
+  }
+
+  Future<void> _searchPerson() async {
+    if (!DatabaseHelper.instance.isDatabaseOpen) return;
+    showSearch(
+      context: context,
+      delegate: PersonaSearchDelegate(onSelect: _loadPersona),
     );
   }
 
@@ -205,37 +169,62 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (!DatabaseHelper.instance.isDatabaseOpen) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('No hay base de datos abierta.'),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _pickDatabase,
-              child: const Text('Abrir Base de Datos'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_currentPersona == null) {
-      return const Center(
-        child: Text('No se ha seleccionado ninguna persona.'),
-      );
-    }
-
-    return PersonDetailsScreen(
-      persona: _currentPersona!,
-      onPersonaSelected: _loadPersona,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _buildContent(),
+      ),
     );
+  }
+
+  Widget _buildContent() {
+    if (DatabaseHelper.instance.isDatabaseOpen) {
+      return MainLayout(
+        currentPerson: _currentPersona,
+        onOpenDatabase: _pickDatabase,
+        onSaveDatabase: _saveDatabase,
+        onCloseDatabase: _closeDatabase,
+        onSearchPerson: _searchPerson,
+        onTestApi: _testApi,
+        onPersonSelected: _loadPersona,
+      );
+    } else {
+      // Empty State but with Menu Bar
+      return Column(
+        children: [
+          CustomMenuBar(
+            onOpen: _pickDatabase,
+            onTestApi: _testApi,
+            // Save/Close disabled by passing null/checks in widget?
+            // Logic inside CustomMenuBar handles null callbacks as disabled.
+          ),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.folder_open, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No hay base de datos abierta',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _pickDatabase,
+                    icon: const Icon(Icons.file_open),
+                    label: const Text('Abrir Base de Datos (.sqlite)'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }
 

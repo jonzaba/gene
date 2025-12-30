@@ -125,4 +125,70 @@ class DatabaseHelper {
     );
     return maps.map((e) => Persona.fromMap(e)).toList();
   }
+
+  Future<List<Persona>> getHijosOf(int personaId) async {
+    final db = await database;
+    // In many schemas, children link to parents via PadreID/MadreID
+    final maps = await db.query(
+      'Personas',
+      where: 'PadreID = ? OR MadreID = ?',
+      whereArgs: [personaId, personaId],
+    );
+    return maps.map((e) => Persona.fromMap(e)).toList();
+  }
+
+  Future<List<Persona>> getHermanosOf(int personaId) async {
+    final p = await getPersona(personaId);
+    if (p == null) return [];
+    if (p.padreId == 0 && p.madreId == 0) return [];
+
+    final db = await database;
+    String whereClause = 'ID != ? AND (';
+    List<dynamic> args = [personaId];
+    bool hasCondition = false;
+
+    if (p.padreId != 0) {
+      whereClause += 'PadreID = ?';
+      args.add(p.padreId);
+      hasCondition = true;
+    }
+    if (p.madreId != 0) {
+      if (hasCondition) whereClause += ' OR ';
+      whereClause += 'MadreID = ?';
+      args.add(p.madreId);
+    }
+    whereClause += ')';
+
+    final maps = await db.query(
+      'Personas',
+      where: whereClause,
+      whereArgs: args,
+    );
+    return maps.map((e) => Persona.fromMap(e)).toList();
+  }
+
+  Future<List<Persona>> getParejasOf(int personaId) async {
+    final db = await database;
+    final familias = await db.query(
+      'Familias',
+      where: 'EsposoID = ? OR EsposaID = ?',
+      whereArgs: [personaId, personaId],
+    );
+
+    Set<int> partnerIds = {};
+    for (var f in familias) {
+      int esposo = f['EsposoID'] as int? ?? 0;
+      int esposa = f['EsposaID'] as int? ?? 0;
+      if (esposo == personaId && esposa > 0) partnerIds.add(esposa);
+      if (esposa == personaId && esposo > 0) partnerIds.add(esposo);
+    }
+
+    if (partnerIds.isEmpty) return [];
+
+    final maps = await db.query(
+      'Personas',
+      where: 'ID IN (${partnerIds.join(',')})',
+    );
+    return maps.map((e) => Persona.fromMap(e)).toList();
+  }
 }
