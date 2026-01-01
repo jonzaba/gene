@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
 
 class CustomMenuBar extends StatelessWidget {
-  final VoidCallback? onOpen;
+  final VoidCallback onOpen;
   final VoidCallback? onSave;
   final VoidCallback? onClose;
   final VoidCallback? onTestApi;
+  final VoidCallback? onToggleParejas;
+  final bool verParejas;
 
   const CustomMenuBar({
     super.key,
-    this.onOpen,
+    required this.onOpen,
     this.onSave,
     this.onClose,
     this.onTestApi,
+    this.onToggleParejas,
+    this.verParejas = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
       color: Colors.grey[200],
+      height: 40,
       child: Row(
         children: [
           _buildMenuButton(context, 'Archivo', [
@@ -26,12 +30,13 @@ class CustomMenuBar extends StatelessWidget {
             const PopupMenuDivider(),
             PopupMenuItem(
               value: 'open',
-              enabled: onOpen != null,
+              onTap: onOpen,
               child: const Text('Abrir'),
             ),
             PopupMenuItem(
               value: 'close',
               enabled: onClose != null,
+              onTap: onClose,
               child: const Text('Cerrar'),
             ),
             const PopupMenuDivider(),
@@ -41,6 +46,7 @@ class CustomMenuBar extends StatelessWidget {
             PopupMenuItem(
               value: 'save',
               enabled: onSave != null,
+              onTap: onSave,
               child: const Text('Guardar copia'),
             ),
             const PopupMenuDivider(),
@@ -51,49 +57,40 @@ class CustomMenuBar extends StatelessWidget {
             const PopupMenuDivider(),
             const PopupMenuItem(enabled: false, child: Text('Cambiar Persona')),
           ]),
-          _buildMenuButton(context, 'Visualizar', [
-            const PopupMenuItem(
-              enabled: false,
-              child: Text('Parejas' /* vs Hermanos */),
+          _buildMenuButton(context, 'Visualización', [
+            PopupMenuItem(
+              enabled: onToggleParejas != null,
+              onTap: onToggleParejas,
+              child: Row(
+                children: [
+                  Icon(
+                    verParejas
+                        ? Icons.check_box
+                        : Icons.check_box_outline_blank,
+                    size: 18,
+                    color: Colors.black,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Ver Parejas'),
+                ],
+              ),
             ),
-            const PopupMenuItem(
-              enabled: false,
-              child: Text('Edad' /* vs Periodo */),
-            ),
+            PopupMenuItem(enabled: false, child: Text('Edad')),
             const PopupMenuDivider(),
             const PopupMenuItem(enabled: false, child: Text('Fijar Foco')),
           ]),
           _buildMenuButton(context, 'Utilidades', [
             const PopupMenuItem(enabled: false, child: Text('Buscar')),
-            const PopupMenuItem(
-              enabled: false,
-              child: Text('Lista Personas'),
-            ), // Was in main panel too
             PopupMenuItem(
               value: 'test_api',
               enabled: onTestApi != null,
+              onTap: onTestApi,
               child: const Text('Probar API'),
             ),
           ]),
-          _buildMenuButton(context, 'Informes', [
-            const PopupMenuItem(
-              enabled: false,
-              child: Text('Lista de Personas'),
-            ),
-            const PopupMenuItem(
-              enabled: false,
-              child: Text('Lista de Uniones'),
-            ),
-            const PopupMenuDivider(),
-            const PopupMenuItem(
-              enabled: false,
-              child: Text('Arbol Descendientes'),
-            ),
-            const PopupMenuItem(enabled: false, child: Text('Arbol Lineal')),
-            const PopupMenuItem(enabled: false, child: Text('Arbol Circular')),
-          ]),
           _buildMenuButton(context, 'Ayuda', [
-            const PopupMenuItem(enabled: false, child: Text('Novedades')),
+            const PopupMenuItem(enabled: false, child: Text('Ayuda')),
+            const PopupMenuDivider(),
             const PopupMenuItem(enabled: false, child: Text('Acerca de...')),
           ]),
         ],
@@ -103,21 +100,14 @@ class CustomMenuBar extends StatelessWidget {
 
   Widget _buildMenuButton(
     BuildContext context,
-    String title,
-    List<PopupMenuEntry<String>> items,
+    String label,
+    List<PopupMenuEntry> items,
   ) {
-    return PopupMenuButton<String>(
-      tooltip: title,
-      onSelected: (value) {
-        if (value == 'open' && onOpen != null) onOpen!();
-        if (value == 'save' && onSave != null) onSave!();
-        if (value == 'close' && onClose != null) onClose!();
-        if (value == 'test_api' && onTestApi != null) onTestApi!();
-      },
+    return PopupMenuButton(
       itemBuilder: (context) => items,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-        child: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text(label),
       ),
     );
   }

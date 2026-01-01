@@ -27,6 +27,12 @@ class _EditPanelState extends State<EditPanel> {
   // ... add date controllers etc.
 
   @override
+  void initState() {
+    super.initState();
+    _loadPersonData();
+  }
+
+  @override
   void didUpdateWidget(EditPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.currentPerson != oldWidget.currentPerson) {

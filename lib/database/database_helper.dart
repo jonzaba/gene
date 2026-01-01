@@ -8,6 +8,9 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
+  // Store the directory path of the loaded database for relative file access (Native only)
+  String? basePath;
+
   DatabaseHelper._init();
 
   Future<Database> get database async {
@@ -190,5 +193,31 @@ class DatabaseHelper {
       where: 'ID IN (${partnerIds.join(',')})',
     );
     return maps.map((e) => Persona.fromMap(e)).toList();
+  }
+
+  Future<void> checkFamilyDocs(List<Persona> personas) async {
+    final db = await database;
+    for (var p in personas) {
+      // Check Boda
+      // Java: SELECT ID FROM Familias WHERE ((EsposoID=p.id) OR (EsposaID=p.id)) AND TieneDocBoda;
+      var res = await db.query(
+        'Familias',
+        columns: ['ID'],
+        where: '(EsposoID = ? OR EsposaID = ?) AND TieneDocBoda = 1',
+        whereArgs: [p.id, p.id],
+        limit: 1,
+      );
+      if (res.isNotEmpty) p.hasDocBoda = true;
+
+      // Check Separacion
+      res = await db.query(
+        'Familias',
+        columns: ['ID'],
+        where: '(EsposoID = ? OR EsposaID = ?) AND TieneDocSeparacion = 1',
+        whereArgs: [p.id, p.id],
+        limit: 1,
+      );
+      if (res.isNotEmpty) p.hasDocSeparacion = true;
+    }
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+// import 'dart:io'; // Cannot import dart:io directly if compiling for web
+import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/persona.dart';
 import '../widgets/main_layout.dart';
@@ -44,9 +46,26 @@ class _HomeScreenState extends State<HomeScreen> {
         if (kIsWeb) {
           pathOrData = 'uploaded.db'; // Virtual path for Web
           bytes = result.files.single.bytes;
+          DatabaseHelper.instance.basePath = null; // No local FS on web
         } else {
           pathOrData = result.files.single.path!;
           bytes = null; // Native uses path directly
+          // Store directory path
+          // Need to import 'package:path/path.dart' as p;
+          // But I can't add imports with this tool easily in one go if I don't see top.
+          // I will assume path package is available or use raw string manipulation if simple,
+          // but path package is safer.
+          // Actually, I should add the import first.
+
+          // Quick hack: use string manipulation for now to avoid import mess if possible,
+          // or just assume '/' separator since we are on Linux.
+          // But safer to add import. I'll stick to a simple split for now if I can't see imports.
+          // Wait, I can see imports in lines 1-10. I need to add one.
+          // I'll use multi_replace to add import and the logic.
+
+          // Let's defer strict path logic to next step or use p.dirname
+
+          DatabaseHelper.instance.basePath = p.dirname(pathOrData);
         }
 
         await DatabaseHelper.instance.openDatabaseFile(

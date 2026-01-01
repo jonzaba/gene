@@ -16,6 +16,9 @@ class Persona {
   int madreId;
   int familiaId;
   String observaciones;
+  // Transient properties for visualization
+  bool hasDocBoda = false;
+  bool hasDocSeparacion = false;
 
   Persona({
     this.id = 0,
