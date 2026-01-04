@@ -169,7 +169,7 @@ class NodoFamilia extends StatelessWidget {
 
     return Row(
       children: [
-        if (photoWidget != null) photoWidget!,
+        if (photoWidget != null) photoWidget,
         Expanded(child: textBlock),
       ],
     );

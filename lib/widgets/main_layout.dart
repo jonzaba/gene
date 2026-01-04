@@ -12,6 +12,7 @@ class MainLayout extends StatefulWidget {
   final VoidCallback? onSearchPerson;
   final VoidCallback? onTestApi;
   final Function(int)? onPersonSelected;
+  final Function(Persona)? onPersonSaved;
 
   const MainLayout({
     super.key,
@@ -22,6 +23,7 @@ class MainLayout extends StatefulWidget {
     this.onSearchPerson,
     this.onTestApi,
     this.onPersonSelected,
+    this.onPersonSaved,
   });
 
   @override
@@ -73,6 +75,7 @@ class _MainLayoutState extends State<MainLayout> {
               Widget editView = EditPanel(
                 currentPerson: widget.currentPerson,
                 onSearch: widget.onSearchPerson,
+                onSave: widget.onPersonSaved,
               );
 
               if (isMobile) {

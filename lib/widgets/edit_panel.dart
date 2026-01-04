@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/persona.dart';
+import '../database/database_helper.dart';
 
 class EditPanel extends StatefulWidget {
   final Persona? currentPerson;
@@ -21,6 +22,7 @@ class EditPanel extends StatefulWidget {
 
 class _EditPanelState extends State<EditPanel> {
   // Controllers
+  final _idController = TextEditingController();
   final _nombreController = TextEditingController();
   final _apellido1Controller = TextEditingController();
   final _apellido2Controller = TextEditingController();
@@ -42,6 +44,7 @@ class _EditPanelState extends State<EditPanel> {
 
   void _loadPersonData() {
     if (widget.currentPerson != null) {
+      _idController.text = widget.currentPerson!.id.toString();
       _nombreController.text = widget.currentPerson!.nombre;
       _apellido1Controller.text = widget.currentPerson!.apellido1;
       _apellido2Controller.text = widget.currentPerson!.apellido2;
@@ -51,9 +54,98 @@ class _EditPanelState extends State<EditPanel> {
   }
 
   void _clearFields() {
+    _idController.clear();
     _nombreController.clear();
     _apellido1Controller.clear();
     _apellido2Controller.clear();
+  }
+
+  bool _validateData() {
+    // Check nombre is not empty
+    if (_nombreController.text.trim().isEmpty) {
+      _showError('Debe ingresar el nombre de la persona');
+      return false;
+    }
+    // Check apellido1 is not empty
+    if (_apellido1Controller.text.trim().isEmpty) {
+      _showError('Debe ingresar el apellido1 de la persona');
+      return false;
+    }
+    // Check length limits (50 chars for nombre, apellido1, apellido2)
+    if (_nombreController.text.length > 50) {
+      _showError('El nombre debe tener menos de 50 caracteres');
+      return false;
+    }
+    if (_apellido1Controller.text.length > 50) {
+      _showError('El apellido1 debe tener menos de 50 caracteres');
+      return false;
+    }
+    if (_apellido2Controller.text.length > 50) {
+      _showError('El apellido2 debe tener menos de 50 caracteres');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _handleSave() async {
+    if (!_validateData()) return;
+
+    if (widget.currentPerson == null) return;
+
+    // Create updated person object
+    final updatedPerson = Persona(
+      id: widget.currentPerson!.id,
+      nombre: _nombreController.text.trim(),
+      apellido1: _apellido1Controller.text.trim(),
+      apellido2: _apellido2Controller.text.trim(),
+      // Preserve existing values for other fields
+      esHombre: widget.currentPerson!.esHombre,
+      fechaNacimiento: widget.currentPerson!.fechaNacimiento,
+      lugarNacimiento: widget.currentPerson!.lugarNacimiento,
+      fechaFallecimiento: widget.currentPerson!.fechaFallecimiento,
+      lugarFallecimiento: widget.currentPerson!.lugarFallecimiento,
+      observaciones: widget.currentPerson!.observaciones,
+      padreId: widget.currentPerson!.padreId,
+      madreId: widget.currentPerson!.madreId,
+      familiaId: widget.currentPerson!.familiaId,
+      tieneFoto: widget.currentPerson!.tieneFoto,
+      tieneDocNacimiento: widget.currentPerson!.tieneDocNacimiento,
+      tieneDocFallecimiento: widget.currentPerson!.tieneDocFallecimiento,
+      fallecido: widget.currentPerson!.fallecido,
+    );
+
+    try {
+      // Save to database
+      final rowsAffected = await DatabaseHelper.instance.updatePersona(
+        updatedPerson,
+      );
+
+      if (rowsAffected > 0) {
+        _showSuccess('Registro guardado');
+        // Notify parent to reload/refresh
+        if (widget.onSave != null) {
+          widget.onSave!(updatedPerson);
+        }
+      } else {
+        _showError('Error al guardar el registro');
+      }
+    } catch (e) {
+      _showError('Error al guardar: $e');
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
   }
 
   @override
@@ -71,7 +163,7 @@ class _EditPanelState extends State<EditPanel> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildActionButton(Icons.save, 'Grabar', () {}),
+              _buildActionButton(Icons.save, 'Grabar', _handleSave),
               _buildActionButton(Icons.cancel, 'Cancelar', () {}),
               _buildActionButton(Icons.delete, 'Borrar', widget.onDelete),
               _buildActionButton(Icons.search, 'Buscar', widget.onSearch),
@@ -109,7 +201,11 @@ class _EditPanelState extends State<EditPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTextField('ID', readOnly: true), // Show ID
+                  _buildTextField(
+                    'ID',
+                    controller: _idController,
+                    readOnly: true,
+                  ), // Show ID
                   _buildTextField('Nombre', controller: _nombreController),
                   _buildTextField(
                     'Apellido1',

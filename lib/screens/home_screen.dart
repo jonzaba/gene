@@ -121,6 +121,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _handlePersonSaved(Persona savedPerson) async {
+    // Reload the person from database to get fresh data
+    await _loadPersona(savedPerson.id);
+  }
+
   void _closeDatabase() {
     // Ideally close DB connection in DatabaseHelper
     setState(() {
@@ -209,6 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onSearchPerson: _searchPerson,
         onTestApi: _testApi,
         onPersonSelected: _loadPersona,
+        onPersonSaved: _handlePersonSaved,
       );
     } else {
       // Empty State but with Menu Bar
