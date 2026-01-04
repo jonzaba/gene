@@ -99,25 +99,31 @@ class NodoFamilia extends StatelessWidget {
         children: [
           // Centered Text
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  persona.nombreCompleto
-                      .toUpperCase(), // Java often uppercases? Image showed caps.
-                  textAlign: TextAlign.center,
-                  style: _getTextStyle(height),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      persona.nombreCompleto.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: _getTextStyle(height),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(_getPeriodo(), style: _getTextStyle(height)),
+                    Text(
+                      persona.lugarNacimiento,
+                      style: _getTextStyle(height),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                Text(_getPeriodo(), style: _getTextStyle(height)),
-                Text(
-                  persona.lugarNacimiento,
-                  style: _getTextStyle(height),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
           ),
 

@@ -63,6 +63,7 @@ class _MainLayoutState extends State<MainLayout> {
 
               // Components
               Widget treeView = TreePanel(
+                key: ValueKey('tree_${widget.currentPerson?.id ?? "none"}'),
                 currentPerson: widget.currentPerson,
                 verParejas: _verParejas, // Pass state down
                 onPersonSelected: (id) {
@@ -73,6 +74,7 @@ class _MainLayoutState extends State<MainLayout> {
               );
 
               Widget editView = EditPanel(
+                key: ValueKey('edit_${widget.currentPerson?.id ?? "none"}'),
                 currentPerson: widget.currentPerson,
                 onSearch: widget.onSearchPerson,
                 onSave: widget.onPersonSaved,

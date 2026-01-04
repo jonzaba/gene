@@ -78,7 +78,9 @@ class _TreePanelState extends State<TreePanel> {
   @override
   void didUpdateWidget(TreePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Reload if ID changes, reference changes (e.g. after save), or view mode changes
     if (oldWidget.currentPerson?.id != widget.currentPerson?.id ||
+        oldWidget.currentPerson != widget.currentPerson ||
         oldWidget.verParejas != widget.verParejas) {
       _loadTreeData();
     }

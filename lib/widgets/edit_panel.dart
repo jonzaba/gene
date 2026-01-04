@@ -28,26 +28,141 @@ class _EditPanelState extends State<EditPanel> {
   final _apellido2Controller = TextEditingController();
   // ... add date controllers etc.
 
+  // Track which fields have been modified
+  final Set<String> _modifiedFields = {};
+  // Store original values to detect changes
+  String _originalNombre = '';
+  String _originalApellido1 = '';
+  String _originalApellido2 = '';
+  // Flag to prevent listeners from triggering setState during initial load
+  bool _isInternalLoading = false;
+
   @override
   void initState() {
     super.initState();
     _loadPersonData();
+
+    // Add listeners to track changes
+    _nombreController.addListener(_onNombreChanged);
+    _apellido1Controller.addListener(_onApellido1Changed);
+    _apellido2Controller.addListener(_onApellido2Changed);
+  }
+
+  @override
+  void dispose() {
+    _nombreController.removeListener(_onNombreChanged);
+    _apellido1Controller.removeListener(_onApellido1Changed);
+    _apellido2Controller.removeListener(_onApellido2Changed);
+    _idController.dispose();
+    _nombreController.dispose();
+    _apellido1Controller.dispose();
+    _apellido2Controller.dispose();
+    super.dispose();
+  }
+
+  void _onNombreChanged() {
+    if (_isInternalLoading) return;
+    setState(() {
+      if (_nombreController.text != _originalNombre) {
+        _modifiedFields.add('nombre');
+      } else {
+        _modifiedFields.remove('nombre');
+      }
+    });
+  }
+
+  void _onApellido1Changed() {
+    if (_isInternalLoading) return;
+    setState(() {
+      if (_apellido1Controller.text != _originalApellido1) {
+        _modifiedFields.add('apellido1');
+      } else {
+        _modifiedFields.remove('apellido1');
+      }
+    });
+  }
+
+  void _onApellido2Changed() {
+    if (_isInternalLoading) return;
+    setState(() {
+      if (_apellido2Controller.text != _originalApellido2) {
+        _modifiedFields.add('apellido2');
+      } else {
+        _modifiedFields.remove('apellido2');
+      }
+    });
   }
 
   @override
   void didUpdateWidget(EditPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.currentPerson != oldWidget.currentPerson) {
+    if (widget.currentPerson?.id != oldWidget.currentPerson?.id) {
+      _checkChangesAndLoad(oldWidget.currentPerson);
+    } else if (widget.currentPerson != oldWidget.currentPerson) {
+      // Same ID but different reference (e.g. after save) - reload fields
       _loadPersonData();
     }
   }
 
+  void _checkChangesAndLoad(Persona? oldPerson) {
+    if (_modifiedFields.isNotEmpty) {
+      Future.microtask(() => _showUnsavedChangesDialog(oldPerson));
+    } else {
+      _loadPersonData();
+    }
+  }
+
+  Future<void> _showUnsavedChangesDialog(Persona? oldPerson) async {
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Modificaciones realizadas'),
+        content: const Text('¿Quieres perder los cambios?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'discard'),
+            child: const Text('Sí'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: const Text('Grabar cambios'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == 'discard') {
+      _loadPersonData(); // Load new person, discarding changes
+    } else if (result == 'save') {
+      await _handleSave(personOverride: oldPerson);
+      _loadPersonData(); // Load new person after save
+    }
+    // If 'cancel' or null, do nothing - stay with current text in fields
+    // and don't load the new person's data yet.
+  }
+
   void _loadPersonData() {
     if (widget.currentPerson != null) {
+      _isInternalLoading = true;
+      // Store original values
+      _originalNombre = widget.currentPerson!.nombre;
+      _originalApellido1 = widget.currentPerson!.apellido1;
+      _originalApellido2 = widget.currentPerson!.apellido2;
+
+      // Load into controllers
       _idController.text = widget.currentPerson!.id.toString();
-      _nombreController.text = widget.currentPerson!.nombre;
-      _apellido1Controller.text = widget.currentPerson!.apellido1;
-      _apellido2Controller.text = widget.currentPerson!.apellido2;
+      _nombreController.text = _originalNombre;
+      _apellido1Controller.text = _originalApellido1;
+      _apellido2Controller.text = _originalApellido2;
+
+      // Clear modified fields tracking
+      _modifiedFields.clear();
+      _isInternalLoading = false;
     } else {
       _clearFields();
     }
@@ -87,31 +202,32 @@ class _EditPanelState extends State<EditPanel> {
     return true;
   }
 
-  Future<void> _handleSave() async {
+  Future<void> _handleSave({Persona? personOverride}) async {
     if (!_validateData()) return;
 
-    if (widget.currentPerson == null) return;
+    final personToSave = personOverride ?? widget.currentPerson;
+    if (personToSave == null) return;
 
     // Create updated person object
     final updatedPerson = Persona(
-      id: widget.currentPerson!.id,
+      id: personToSave.id,
       nombre: _nombreController.text.trim(),
       apellido1: _apellido1Controller.text.trim(),
       apellido2: _apellido2Controller.text.trim(),
       // Preserve existing values for other fields
-      esHombre: widget.currentPerson!.esHombre,
-      fechaNacimiento: widget.currentPerson!.fechaNacimiento,
-      lugarNacimiento: widget.currentPerson!.lugarNacimiento,
-      fechaFallecimiento: widget.currentPerson!.fechaFallecimiento,
-      lugarFallecimiento: widget.currentPerson!.lugarFallecimiento,
-      observaciones: widget.currentPerson!.observaciones,
-      padreId: widget.currentPerson!.padreId,
-      madreId: widget.currentPerson!.madreId,
-      familiaId: widget.currentPerson!.familiaId,
-      tieneFoto: widget.currentPerson!.tieneFoto,
-      tieneDocNacimiento: widget.currentPerson!.tieneDocNacimiento,
-      tieneDocFallecimiento: widget.currentPerson!.tieneDocFallecimiento,
-      fallecido: widget.currentPerson!.fallecido,
+      esHombre: personToSave.esHombre,
+      fechaNacimiento: personToSave.fechaNacimiento,
+      lugarNacimiento: personToSave.lugarNacimiento,
+      fechaFallecimiento: personToSave.fechaFallecimiento,
+      lugarFallecimiento: personToSave.lugarFallecimiento,
+      observaciones: personToSave.observaciones,
+      padreId: personToSave.padreId,
+      madreId: personToSave.madreId,
+      familiaId: personToSave.familiaId,
+      tieneFoto: personToSave.tieneFoto,
+      tieneDocNacimiento: personToSave.tieneDocNacimiento,
+      tieneDocFallecimiento: personToSave.tieneDocFallecimiento,
+      fallecido: personToSave.fallecido,
     );
 
     try {
@@ -122,6 +238,12 @@ class _EditPanelState extends State<EditPanel> {
 
       if (rowsAffected > 0) {
         _showSuccess('Registro guardado');
+        // Update originals to match saved values
+        _originalNombre = _nombreController.text.trim();
+        _originalApellido1 = _apellido1Controller.text.trim();
+        _originalApellido2 = _apellido2Controller.text.trim();
+        _modifiedFields.clear(); // Clear change tracking
+
         // Notify parent to reload/refresh
         if (widget.onSave != null) {
           widget.onSave!(updatedPerson);
@@ -132,6 +254,12 @@ class _EditPanelState extends State<EditPanel> {
     } catch (e) {
       _showError('Error al guardar: $e');
     }
+  }
+
+  void _handleCancel() {
+    // Reload original data, discarding changes
+    _loadPersonData();
+    _showSuccess('Cambios descartados');
   }
 
   void _showError(String message) {
@@ -164,7 +292,7 @@ class _EditPanelState extends State<EditPanel> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildActionButton(Icons.save, 'Grabar', _handleSave),
-              _buildActionButton(Icons.cancel, 'Cancelar', () {}),
+              _buildActionButton(Icons.cancel, 'Cancelar', _handleCancel),
               _buildActionButton(Icons.delete, 'Borrar', widget.onDelete),
               _buildActionButton(Icons.search, 'Buscar', widget.onSearch),
             ],
@@ -205,15 +333,25 @@ class _EditPanelState extends State<EditPanel> {
                     'ID',
                     controller: _idController,
                     readOnly: true,
+                    horizontal: true,
                   ), // Show ID
-                  _buildTextField('Nombre', controller: _nombreController),
+                  _buildTextField(
+                    'Nombre',
+                    controller: _nombreController,
+                    fieldName: 'nombre',
+                    horizontal: true,
+                  ),
                   _buildTextField(
                     'Apellido1',
                     controller: _apellido1Controller,
+                    fieldName: 'apellido1',
+                    horizontal: true,
                   ),
                   _buildTextField(
                     'Apellido2',
                     controller: _apellido2Controller,
+                    fieldName: 'apellido2',
+                    horizontal: true,
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -312,9 +450,57 @@ class _EditPanelState extends State<EditPanel> {
   Widget _buildTextField(
     String label, {
     TextEditingController? controller,
+    String? fieldName, // Add fieldName to track modifications
     bool readOnly = false,
     int maxLines = 1,
+    bool horizontal = false,
   }) {
+    final isModified = fieldName != null && _modifiedFields.contains(fieldName);
+
+    Widget textField = SizedBox(
+      height: maxLines == 1 ? 30 : null,
+      child: TextField(
+        controller: controller,
+        readOnly: readOnly,
+        maxLines: maxLines,
+        style: const TextStyle(fontSize: 12),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 8,
+            horizontal: 4,
+          ),
+          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: isModified
+              ? Colors.green[100]
+              : (readOnly ? Colors.grey[300] : Colors.white),
+          // Explicitly set focus and hover colors to prevent gray overlay
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+        ),
+      ),
+    );
+
+    if (horizontal) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 60,
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: Colors.black54),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: textField),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -322,20 +508,7 @@ class _EditPanelState extends State<EditPanel> {
           label,
           style: const TextStyle(fontSize: 11, color: Colors.black54),
         ),
-        SizedBox(
-          height: maxLines == 1 ? 30 : null,
-          child: TextField(
-            controller: controller,
-            readOnly: readOnly,
-            maxLines: maxLines,
-            style: const TextStyle(fontSize: 12),
-            decoration: const InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
+        textField,
       ],
     );
   }
