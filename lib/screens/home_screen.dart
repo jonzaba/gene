@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-// import 'dart:io'; // Cannot import dart:io directly if compiling for web
+import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/persona.dart';
@@ -25,6 +25,107 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Delay slightly to ensure UI is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoLoadConfig();
+    });
+  }
+
+  Future<void> _checkAutoLoadConfig() async {
+    String? ruta;
+    String? base;
+    int? personaId;
+
+    if (kIsWeb) {
+      // Parse URL parameters: ?ruta=...&base=...&persona=...
+      final params = Uri.base.queryParameters;
+      ruta = params['ruta'];
+      base = params['base'];
+      if (params['persona'] != null) {
+        personaId = int.tryParse(params['persona']!);
+      }
+    } else {
+      // Check for gene.config in the executable's directory
+      try {
+        final configFile = File('gene.config');
+        if (await configFile.exists()) {
+          final lines = await configFile.readAsLines();
+          for (var line in lines) {
+            final parts = line.split('=');
+            if (parts.length == 2) {
+              final key = parts[0].trim().toLowerCase();
+              final value = parts[1].trim();
+              if (key == 'ruta') ruta = value;
+              if (key == 'base') base = value;
+              if (key == 'persona') personaId = int.tryParse(value);
+            }
+          }
+        }
+      } catch (e) {
+        // Silently fail if config can't be read
+      }
+    }
+
+    if (ruta != null && base != null) {
+      await _autoLoadDatabase(ruta, base, initialPersonaId: personaId);
+    }
+  }
+
+  Future<void> _autoLoadDatabase(
+    String ruta,
+    String base, {
+    int? initialPersonaId,
+  }) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      String fullPath;
+      Uint8List? bytes;
+
+      if (kIsWeb) {
+        // Construct URL
+        fullPath = ruta.endsWith('/') ? '$ruta$base' : '$ruta/$base';
+
+        // Fetch bytes via HTTP
+        final response = await http.get(Uri.parse(fullPath));
+        if (response.statusCode == 200) {
+          bytes = response.bodyBytes;
+          DatabaseHelper.instance.basePath = null;
+        } else {
+          throw Exception('Error descargando BD: ${response.statusCode}');
+        }
+      } else {
+        // Construct local path
+        fullPath = p.join(ruta, base);
+        DatabaseHelper.instance.basePath = ruta;
+      }
+
+      await DatabaseHelper.instance.openDatabaseFile(fullPath, bytes: bytes);
+
+      setState(() {
+        _dbPath = base;
+      });
+
+      if (initialPersonaId != null) {
+        await _loadPersona(initialPersonaId);
+      } else {
+        await _loadInitialPersona();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error en carga automática: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _pickDatabase() async {
@@ -77,9 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _dbPath = result.files.single.name;
         });
         await _loadInitialPersona();
-      } catch (e, stackTrace) {
-        print('Error opening database: $e');
-        print(stackTrace);
+      } catch (e) {
+        // Error opening database
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error abriendo base de datos: $e')),
