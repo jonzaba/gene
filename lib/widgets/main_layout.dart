@@ -3,6 +3,7 @@ import '../models/persona.dart';
 import 'custom_menu_bar.dart';
 import 'tree_panel.dart';
 import 'edit_panel.dart';
+import 'surnames_panel.dart';
 
 class MainLayout extends StatefulWidget {
   final Persona? currentPerson;
@@ -35,6 +36,11 @@ class _MainLayoutState extends State<MainLayout> {
   bool _showTreeOnMobile = true;
   // View State (Lifted from TreePanel)
   bool _verParejas = true;
+  bool _verApellidos = false;
+  double _surnamesPanelWidth = 180.0;
+  int _numApellidos = 16;
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +60,12 @@ class _MainLayoutState extends State<MainLayout> {
             });
           },
           verParejas: _verParejas,
+          onToggleApellidos: () {
+            setState(() {
+              _verApellidos = !_verApellidos;
+            });
+          },
+          verApellidos: _verApellidos,
         ),
         // Main Content
         Expanded(
@@ -81,36 +93,100 @@ class _MainLayoutState extends State<MainLayout> {
               );
 
               if (isMobile) {
-                return Stack(
-                  children: [
-                    // Content
-                    Positioned.fill(
-                      child: _showTreeOnMobile ? treeView : editView,
+                return Scaffold(
+                  key: _scaffoldKey,
+                  drawer: Drawer(
+                    width: _surnamesPanelWidth,
+                    child: SurnamesPanel(
+                      key: ValueKey(
+                        'surnames_drawer_${widget.currentPerson?.id ?? "none"}',
+                      ),
+                      currentPerson: widget.currentPerson,
+                      width: _surnamesPanelWidth,
+                      onWidthChanged: (newWidth) {
+                        setState(() {
+                          _surnamesPanelWidth = newWidth;
+                        });
+                      },
+                      numApellidos: _numApellidos,
+                      onNumApellidosChanged: (newVal) {
+                        setState(() {
+                          _numApellidos = newVal;
+                        });
+                      },
                     ),
-                    // Toggle Button (FAB-ish)
-                    Positioned(
-                      right: 16,
-                      bottom: 16,
-                      child: FloatingActionButton(
-                        onPressed: () {
-                          setState(() {
-                            _showTreeOnMobile = !_showTreeOnMobile;
-                          });
-                        },
-                        child: Icon(
-                          _showTreeOnMobile
-                              ? Icons.edit
-                              : Icons.family_restroom,
+                  ),
+                  body: Stack(
+                    children: [
+                      // Content
+                      Positioned.fill(
+                        child: _showTreeOnMobile ? treeView : editView,
+                      ),
+                      // Toggle Button (FAB-ish)
+                      Positioned(
+                        right: 16,
+                        bottom: 16,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_verApellidos) ...[
+                              FloatingActionButton(
+                                mini: true,
+                                heroTag: 'surnamesBtn',
+                                onPressed: () {
+                                  _scaffoldKey.currentState?.openDrawer();
+                                },
+                                backgroundColor: Colors.orange,
+                                child: const Icon(
+                                  Icons.list_alt,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            FloatingActionButton(
+                              heroTag: 'viewToggleBtn',
+                              onPressed: () {
+                                setState(() {
+                                  _showTreeOnMobile = !_showTreeOnMobile;
+                                });
+                              },
+                              child: Icon(
+                                _showTreeOnMobile
+                                    ? Icons.edit
+                                    : Icons.family_restroom,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               } else {
                 // Desktop Split View
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (_verApellidos)
+                      SurnamesPanel(
+                        key: ValueKey(
+                          'surnames_${widget.currentPerson?.id ?? "none"}',
+                        ),
+                        currentPerson: widget.currentPerson,
+                        width: _surnamesPanelWidth,
+                        onWidthChanged: (newWidth) {
+                          setState(() {
+                            _surnamesPanelWidth = newWidth;
+                          });
+                        },
+                        numApellidos: _numApellidos,
+                        onNumApellidosChanged: (newVal) {
+                          setState(() {
+                            _numApellidos = newVal;
+                          });
+                        },
+                      ),
                     Expanded(child: treeView),
                     editView, // Fixed width handled internally by EditPanel
                   ],

@@ -7,6 +7,8 @@ class CustomMenuBar extends StatelessWidget {
   final VoidCallback? onTestApi;
   final VoidCallback? onToggleParejas;
   final bool verParejas;
+  final VoidCallback? onToggleApellidos;
+  final bool verApellidos;
 
   const CustomMenuBar({
     super.key,
@@ -16,6 +18,8 @@ class CustomMenuBar extends StatelessWidget {
     this.onTestApi,
     this.onToggleParejas,
     this.verParejas = true,
+    this.onToggleApellidos,
+    this.verApellidos = false,
   });
 
   @override
@@ -72,6 +76,23 @@ class CustomMenuBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   const Text('Ver Parejas'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              enabled: onToggleApellidos != null,
+              onTap: onToggleApellidos,
+              child: Row(
+                children: [
+                  Icon(
+                    verApellidos
+                        ? Icons.check_box
+                        : Icons.check_box_outline_blank,
+                    size: 18,
+                    color: Colors.black,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Panel Apellidos'),
                 ],
               ),
             ),

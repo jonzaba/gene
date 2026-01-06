@@ -105,7 +105,7 @@ class _TreePanelState extends State<TreePanel> {
       imgDocSep = await _loadImage('assets/images/doc_Separacion.png');
       if (mounted) setState(() {});
     } catch (e) {
-      print("Error loading assets: $e");
+      // Error loading assets
     }
   }
 
@@ -158,7 +158,7 @@ class _TreePanelState extends State<TreePanel> {
       }
       await db.checkFamilyDocs(allVisible);
     } catch (e) {
-      print('Error loading tree: $e');
+      // Error loading tree
     } finally {
       if (mounted) {
         setState(() {
@@ -501,7 +501,10 @@ class TreePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
+  bool shouldRepaint(covariant TreePainter oldDelegate) {
+    return oldDelegate.nodo != nodo ||
+        oldDelegate.config.width != config.width ||
+        oldDelegate.config.height != config.height ||
+        oldDelegate.config.verParejas != config.verParejas;
   }
 }

@@ -111,14 +111,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadPersona(int id) async {
-    setState(() {
-      _isLoading = true;
-    });
+    // Only show global loader if we don't have a persona yet
+    if (_currentPersona == null) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     Persona? p = await DatabaseHelper.instance.getPersona(id);
-    setState(() {
-      _currentPersona = p;
-      _isLoading = false;
-    });
+
+    if (mounted) {
+      setState(() {
+        _currentPersona = p;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _handlePersonSaved(Persona savedPerson) async {

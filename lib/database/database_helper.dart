@@ -220,4 +220,76 @@ class DatabaseHelper {
       if (res.isNotEmpty) p.hasDocSeparacion = true;
     }
   }
+
+  Future<List<String>> getUniqueLocations() async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> personaNac = await db.rawQuery(
+        'SELECT DISTINCT LugarNacimiento as Lugar FROM Personas WHERE LugarNacimiento IS NOT NULL AND LugarNacimiento != ""',
+      );
+      final List<Map<String, dynamic>> personaFall = await db.rawQuery(
+        'SELECT DISTINCT LugarFallecimiento as Lugar FROM Personas WHERE LugarFallecimiento IS NOT NULL AND LugarFallecimiento != ""',
+      );
+      final List<Map<String, dynamic>> familiaBoda = await db.rawQuery(
+        'SELECT DISTINCT LugarBoda as Lugar FROM Familias WHERE LugarBoda IS NOT NULL AND LugarBoda != ""',
+      );
+      final List<Map<String, dynamic>> familiaSep = await db.rawQuery(
+        'SELECT DISTINCT LugarSeparacion as Lugar FROM Familias WHERE LugarSeparacion IS NOT NULL AND LugarSeparacion != ""',
+      );
+
+      final Set<String> locations = {};
+      for (var row in personaNac) {
+        locations.add(row['Lugar'] as String);
+      }
+      for (var row in personaFall) {
+        locations.add(row['Lugar'] as String);
+      }
+      for (var row in familiaBoda) {
+        locations.add(row['Lugar'] as String);
+      }
+      for (var row in familiaSep) {
+        locations.add(row['Lugar'] as String);
+      }
+
+      final List<String> sortedList = locations.toList();
+      sortedList.sort();
+      return sortedList;
+    } catch (e) {
+      print('Error fetching unique locations: $e');
+      return [];
+    }
+  }
+
+  /// Fetches ancestors of a person up to [maxLevels] deep.
+  /// Level 1: Padre, Madre
+  /// Level 2: Abuelos, etc.
+  /// Returns a Map where key is ID and value is Persona object.
+  Future<Map<int, Persona>> getAncestors(int rootId, int maxLevels) async {
+    Map<int, Persona> ancestors = {};
+    List<int> toFetch = [rootId];
+
+    for (int i = 0; i < maxLevels; i++) {
+      if (toFetch.isEmpty) break;
+
+      final db = await database;
+      final maps = await db.query(
+        'Personas',
+        where: 'ID IN (${toFetch.join(',')})',
+      );
+
+      List<int> nextFetch = [];
+      for (var map in maps) {
+        final p = Persona.fromMap(map);
+        ancestors[p.id] = p;
+        if (p.padreId > 0 && !ancestors.containsKey(p.padreId)) {
+          nextFetch.add(p.padreId);
+        }
+        if (p.madreId > 0 && !ancestors.containsKey(p.madreId)) {
+          nextFetch.add(p.madreId);
+        }
+      }
+      toFetch = nextFetch;
+    }
+    return ancestors;
+  }
 }
